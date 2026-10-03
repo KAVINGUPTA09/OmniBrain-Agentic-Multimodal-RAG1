@@ -2,7 +2,10 @@ import os
 import pickle
 import numpy as np
 
-VECTOR_STORE_PATH = "rag/vector_store.pkl"
+# Directory of this file (rag folder)
+RAG_DIR = os.path.dirname(os.path.abspath(__file__))
+# Absolute path to vector_store.pkl (always points to project_root/rag/vector_store.pkl)
+VECTOR_STORE_PATH = os.path.join(RAG_DIR, "vector_store.pkl")
 
 
 def create_vector_store(chunks, embeddings):
@@ -35,20 +38,14 @@ def create_vector_store(chunks, embeddings):
     companies = {}
 
     for chunk in chunks:
-
         if isinstance(chunk, dict):
-
             company = chunk.get("company", "Unknown")
-
             if company not in companies:
                 companies[company] = 0
-
             companies[company] += 1
 
     if companies:
-
         print("\nChunks by company:")
-
         for company, count in companies.items():
             print(f"{company}: {count}")
 
@@ -59,14 +56,12 @@ def load_vector_store():
     """
 
     if not os.path.exists(VECTOR_STORE_PATH):
-
         raise FileNotFoundError(
-            "Vector store not found. "
+            f"Vector store not found at {VECTOR_STORE_PATH}. "
             "Run: python -m rag.ingest"
         )
 
     with open(VECTOR_STORE_PATH, "rb") as f:
-
         vector_store = pickle.load(f)
 
     return vector_store
@@ -103,19 +98,8 @@ if __name__ == "__main__":
     store = load_vector_store()
 
     print("\nTesting vector store...")
-
-    print(
-        "Number of chunks:",
-        len(store["chunks"])
-    )
-
-    print(
-        "Embedding shape:",
-        store["embeddings"].shape
-    )
-
+    print("Number of chunks:", len(store["chunks"]))
+    print("Embedding shape:", store["embeddings"].shape)
     print("\nFirst chunk:")
-
     print(store["chunks"][0])
-
     print("\nVector store test successful!")
