@@ -2,7 +2,6 @@ import os
 import re
 import json
 import pymupdf
-from google import genai
 from langgraph.graph import StateGraph, START, END
 
 from graph.state import AgentState
@@ -12,21 +11,32 @@ from vision.image_processor import analyze_page
 
 
 # ============================================================
+# HELPER: API KEY RESOLUTION (ENV + STREAMLIT SECRETS)
+# ============================================================
+def get_gemini_api_key():
+    key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    if not key:
+        try:
+            import streamlit as st
+            key = st.secrets.get("GEMINI_API_KEY") or st.secrets.get("GOOGLE_API_KEY")
+        except Exception:
+            pass
+    return key
+
+
+# ============================================================
 # FORMATTING HELPERS (FIXED NESTED LIST & TABLE RENDERING)
 # ============================================================
-
 def format_vision_markdown(result, pdf_name, page_num):
     if not result:
         return f"### 📊 Vision Extraction: {pdf_name} (Page {page_num})\n\nNo visual elements detected."
 
-    # Parse JSON string agar aayi ho
     if isinstance(result, str):
         try:
             result = json.loads(result)
         except Exception:
             return result
 
-    # Flatten nested structures (jaise [[{...}]] ya mixed lists)
     elements = []
     if isinstance(result, dict):
         elements = [result]
@@ -62,7 +72,6 @@ def format_vision_markdown(result, pdf_name, page_num):
             if desc:
                 md.append(f"- **Summary:** {desc}")
 
-            # Legends
             legends = el.get("legend", [])
             if legends and isinstance(legends, list):
                 leg_strs = []
@@ -74,7 +83,6 @@ def format_vision_markdown(result, pdf_name, page_num):
                 if leg_strs:
                     md.append(f"- **Series/Legend:** {', '.join(leg_strs)}")
 
-            # Extracted Values to Markdown Table
             data_points = el.get("data_points", [])
             if data_points and isinstance(data_points, list):
                 first_pt = data_points[0]
@@ -147,11 +155,9 @@ def vision_agent(state: AgentState):
     print("Vision Agent selected", flush=True)
     question = state["question"]
 
-    # Target page extraction
     match = re.search(r'page\s*(\d+)', question, re.IGNORECASE)
     page_num = int(match.group(1)) if match else 20
 
-    # Locate target PDF safely
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     data_dir = os.path.join(base_dir, "data")
     os.makedirs(data_dir, exist_ok=True)
@@ -160,7 +166,6 @@ def vision_agent(state: AgentState):
 
     target_pdf = None
     q_lower = question.lower()
-    
     if pdf_files:
         for f in pdf_files:
             clean_name = f.lower().replace(".pdf", "").replace("-", " ").replace("_", " ")
@@ -181,7 +186,6 @@ def vision_agent(state: AgentState):
         if not target_pdf:
             target_pdf = pdf_files[0]
 
-    # Agar koi PDF nahi mili toh safe return (NoneType crash se bachne ke liye)
     if not target_pdf:
         return {
             "vision_results": [
@@ -191,9 +195,10 @@ def vision_agent(state: AgentState):
         }
 
     pdf_path = os.path.join(data_dir, target_pdf)
-    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    api_key = get_gemini_api_key()
 
     try:
+        from google import genai
         doc = pymupdf.open(pdf_path)
         if page_num > len(doc) or page_num < 1:
             page_num = min(max(1, page_num), len(doc))
@@ -232,7 +237,7 @@ def multi_agent(state: AgentState):
 
 
 def synthesis_node(state: AgentState):
-    """Passes vision results directly; summarizes search excerpts with Gemini."""
+    """Passes vision results directly; summarizes search excerpts into a clean financial answer."""
     question = state["question"]
     vision_res = state.get("vision_results", [])
     search_res = state.get("search_results", [])
@@ -241,26 +246,47 @@ def synthesis_node(state: AgentState):
         return {"final_answer": "\n\n".join(vision_res)}
 
     raw_text = "\n\n".join(search_res)
-    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-    if not api_key or not raw_text:
+    api_key = get_gemini_api_key()
+
+    if not api_key or not raw_text.strip():
         return {"final_answer": raw_text}
 
-    try:
-        client = genai.Client(api_key=api_key)
-        prompt = f"""You are an executive financial analyst. Based on these retrieved excerpts from 10-K filings, answer the user's question directly with key metrics bolded and clean bullet points. Do NOT mention '[Excerpt 1]' or quote metadata directly.
+    prompt = f"""You are a senior financial analyst. Answer the user question accurately using the excerpts below from SEC 10-K filings. 
+DO NOT quote raw metadata or mention tags like '[Excerpt 1]' or '[Excerpt 2]'.
+Synthesize the information directly into a clean executive summary with key metrics bolded and bullet points.
 
-User Question: {question}
+Question: {question}
 
-Retrieved Excerpts:
+Context Excerpts:
 {raw_text}
-"""
+
+Structured Financial Answer:"""
+
+    # 1. Try google-genai SDK
+    try:
+        from google import genai
+        client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-1.5-flash",
             contents=prompt
         )
-        return {"final_answer": response.text}
+        if response.text and response.text.strip():
+            return {"final_answer": response.text.strip()}
     except Exception:
-        return {"final_answer": raw_text}
+        pass
+
+    # 2. Fallback to google-generativeai SDK
+    try:
+        import google.generativeai as legacy_genai
+        legacy_genai.configure(api_key=api_key)
+        model = legacy_genai.GenerativeModel("gemini-1.5-flash")
+        resp = model.generate_content(prompt)
+        if resp.text and resp.text.strip():
+            return {"final_answer": resp.text.strip()}
+    except Exception:
+        pass
+
+    return {"final_answer": raw_text}
 
 
 # ============================================================
