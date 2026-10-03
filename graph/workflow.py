@@ -2,6 +2,7 @@ import os
 import re
 import json
 import pymupdf
+from google import genai
 from langgraph.graph import StateGraph, START, END
 
 from graph.state import AgentState
@@ -122,7 +123,8 @@ def format_vision_markdown(result, pdf_name, page_num):
                     md.append("\n| " + " | ".join(headers) + " |")
                     md.append("| " + " | ".join(["---"] * len(headers)) + " |")
                     for r in rows:
-                        md.append("| " + " | ".join([str(r.get(h, "")) for h in headers]) + " |")
+                        if isinstance(r, dict):
+                            md.append("| " + " | ".join([str(r.get(h, "")) for h in headers]) + " |")
                     md.append("\n---\n")
                 elif desc:
                     md.append(f"- {desc}\n")
@@ -186,6 +188,7 @@ def vision_agent(state: AgentState):
         if not target_pdf:
             target_pdf = pdf_files[0]
 
+    # Safe return agar PDF nahi mili (NoneType error se bachega)
     if not target_pdf:
         return {
             "vision_results": [
@@ -198,7 +201,6 @@ def vision_agent(state: AgentState):
     api_key = get_gemini_api_key()
 
     try:
-        from google import genai
         doc = pymupdf.open(pdf_path)
         if page_num > len(doc) or page_num < 1:
             page_num = min(max(1, page_num), len(doc))
@@ -248,43 +250,31 @@ def synthesis_node(state: AgentState):
     raw_text = "\n\n".join(search_res)
     api_key = get_gemini_api_key()
 
-    if not api_key or not raw_text.strip():
-        return {"final_answer": raw_text}
+    if not api_key:
+        return {
+            "final_answer": f"⚠️ **API Key Missing:** Streamlit Cloud Secrets me `GEMINI_API_KEY` set nahi hai.\n\n{raw_text}"
+        }
 
-    prompt = f"""You are a senior financial analyst. Answer the user question accurately using the excerpts below from SEC 10-K filings. 
-DO NOT quote raw metadata or mention tags like '[Excerpt 1]' or '[Excerpt 2]'.
-Synthesize the information directly into a clean executive summary with key metrics bolded and bullet points.
+    prompt = f"""You are an executive financial analyst. Based on these retrieved excerpts from 10-K filings, answer the user's question directly with key metrics bolded and clean bullet points.
+Never mention '[Excerpt 1]' or quote metadata tags directly.
 
-Question: {question}
+User Question: {question}
 
-Context Excerpts:
+Retrieved Excerpts:
 {raw_text}
 
-Structured Financial Answer:"""
+Executive Summary:"""
 
-    # 1. Try google-genai SDK
     try:
-        from google import genai
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
-            model="gemini-1.5-flash",
+            model="gemini-2.0-flash",
             contents=prompt
         )
         if response.text and response.text.strip():
             return {"final_answer": response.text.strip()}
-    except Exception:
-        pass
-
-    # 2. Fallback to google-generativeai SDK
-    try:
-        import google.generativeai as legacy_genai
-        legacy_genai.configure(api_key=api_key)
-        model = legacy_genai.GenerativeModel("gemini-1.5-flash")
-        resp = model.generate_content(prompt)
-        if resp.text and resp.text.strip():
-            return {"final_answer": resp.text.strip()}
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"GenAI SDK synthesis failed: {e}", flush=True)
 
     return {"final_answer": raw_text}
 
