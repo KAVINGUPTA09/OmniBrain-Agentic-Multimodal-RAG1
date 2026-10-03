@@ -151,34 +151,52 @@ def vision_agent(state: AgentState):
     match = re.search(r'page\s*(\d+)', question, re.IGNORECASE)
     page_num = int(match.group(1)) if match else 20
 
-    # Locate target PDF
+    # Locate target PDF safely
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     data_dir = os.path.join(base_dir, "data")
+    os.makedirs(data_dir, exist_ok=True)
+
     pdf_files = [f for f in os.listdir(data_dir) if f.endswith(".pdf")] if os.path.exists(data_dir) else []
 
-    target_pdf = pdf_files[0] if pdf_files else None
+    target_pdf = None
     q_lower = question.lower()
-    for f in pdf_files:
-        if f.lower() in q_lower or f.lower().replace(".pdf", "").replace("-", " ").replace("_", " ") in q_lower:
-            target_pdf = f
-            break
-    if not target_pdf and pdf_files:
-        if "apple" in q_lower:
-            target_pdf = next((f for f in pdf_files if "apple" in f.lower()), pdf_files[0])
-        elif "nvidia" in q_lower:
-            target_pdf = next((f for f in pdf_files if "nvidia" in f.lower()), pdf_files[0])
-        elif "tesla" in q_lower:
-            target_pdf = next((f for f in pdf_files if "tesla" in f.lower()), pdf_files[0])
-        elif "netflix" in q_lower:
-            target_pdf = next((f for f in pdf_files if "netflix" in f.lower()), pdf_files[0])
+    
+    if pdf_files:
+        for f in pdf_files:
+            clean_name = f.lower().replace(".pdf", "").replace("-", " ").replace("_", " ")
+            if f.lower() in q_lower or clean_name in q_lower:
+                target_pdf = f
+                break
+
+        if not target_pdf:
+            if "apple" in q_lower:
+                target_pdf = next((f for f in pdf_files if "apple" in f.lower()), None)
+            elif "nvidia" in q_lower:
+                target_pdf = next((f for f in pdf_files if "nvidia" in f.lower()), None)
+            elif "tesla" in q_lower:
+                target_pdf = next((f for f in pdf_files if "tesla" in f.lower()), None)
+            elif "netflix" in q_lower:
+                target_pdf = next((f for f in pdf_files if "netflix" in f.lower()), None)
+
+        if not target_pdf:
+            target_pdf = pdf_files[0]
+
+    # Agar koi PDF nahi mili toh safe return (NoneType crash se bachne ke liye)
+    if not target_pdf:
+        return {
+            "vision_results": [
+                "⚠️ **No PDF Found:** Ingestion folder (`data/`) mein koi valid PDF file nahi mili. Sidebar se document pehle upload karein."
+            ],
+            "next_agent": "vision"
+        }
 
     pdf_path = os.path.join(data_dir, target_pdf)
-    api_key = os.environ.get("GEMINI_API_KEY")
+    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
 
     try:
         doc = pymupdf.open(pdf_path)
         if page_num > len(doc) or page_num < 1:
-            page_num = min(page_num, len(doc))
+            page_num = min(max(1, page_num), len(doc))
         page = doc[page_num - 1]
 
         client = genai.Client(api_key=api_key)
@@ -223,7 +241,7 @@ def synthesis_node(state: AgentState):
         return {"final_answer": "\n\n".join(vision_res)}
 
     raw_text = "\n\n".join(search_res)
-    api_key = os.environ.get("GEMINI_API_KEY")
+    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
     if not api_key or not raw_text:
         return {"final_answer": raw_text}
 
