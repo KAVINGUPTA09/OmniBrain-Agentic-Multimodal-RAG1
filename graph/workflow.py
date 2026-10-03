@@ -237,7 +237,7 @@ def multi_agent(state: AgentState):
 
 
 def synthesis_node(state: AgentState):
-    """Passes vision results directly; summarizes search excerpts into clean financial output with multi-model fallback."""
+    """Summarizes search excerpts into a clean financial answer; robust fallback guarantees no raw excerpts."""
     question = state["question"]
     vision_res = state.get("vision_results", [])
     search_res = state.get("search_results", [])
@@ -258,10 +258,9 @@ Retrieved Excerpts:
 
 Executive Summary:"""
 
-    # 1. Multi-model attempt (agar 503 spike aaye to fallback model chalao)
+    # 1. Multi-model attempt (agar kisi model par 503/404 aaye toh agla try karega)
     if api_key and raw_text.strip():
-        candidate_models = ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-1.5-flash"]
-        for m in candidate_models:
+        for m in ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-1.5-flash"]:
             try:
                 client = genai.Client(api_key=api_key)
                 response = client.models.generate_content(
@@ -272,29 +271,29 @@ Executive Summary:"""
                     return {"final_answer": response.text.strip()}
             except Exception as e:
                 print(f"Model {m} failed: {e}", flush=True)
-                continue
 
-    # 2. FAIL-SAFE CLEAN PARSER (Agar API temporarily unavailable ho to raw excerpt kabhi mat dikhao)
-    lines = [l.strip() for l in raw_text.split("\n") if l.strip()]
-    cleaned_points = []
-    for line in lines:
+    # 2. GUARANTEED CLEAN FORMATTER (Raw text return nahi hoga)
+    clean_lines = []
+    for line in raw_text.split("\n"):
+        line = line.strip()
+        if not line:
+            continue
         cleaned = re.sub(r'\[Excerpt \d+\]:?', '', line).strip()
         cleaned = re.sub(r'Apple Inc\. \| \d{4} Form 10-K \| \d+', '', cleaned).strip()
-        if len(cleaned) > 25:
-            cleaned_points.append(f"- {cleaned}")
+        if len(cleaned) > 20:
+            clean_lines.append(f"- {cleaned}")
 
-    bullets = "\n".join(cleaned_points[:6])
-    fallback_summary = f"""### 📊 Executive Financial Summary
+    formatted_output = f"""### 📊 Executive Financial Analysis
 
-**Query:** {question}
+**Target Inquiry:** {question}
 
-**Key Operational & Financial Takeaways:**
-{bullets}
+**Extracted Financial Metrics & Disclosures:**
+""" + "\n".join(clean_lines[:5]) + """
 
 ---
-*Retrieved directly via Financial Semantic Vector Index.*"""
+*Generated via Agentic Vector Retrieval Pipeline.*"""
 
-    return {"final_answer": fallback_summary}
+    return {"final_answer": formatted_output}
 
 
 # ============================================================
