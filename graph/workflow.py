@@ -123,8 +123,7 @@ def format_vision_markdown(result, pdf_name, page_num):
                     md.append("\n| " + " | ".join(headers) + " |")
                     md.append("| " + " | ".join(["---"] * len(headers)) + " |")
                     for r in rows:
-                        if isinstance(r, dict):
-                            md.append("| " + " | ".join([str(r.get(h, "")) for h in headers]) + " |")
+                        md.append("| " + " | ".join([str(r.get(h, "")) for h in headers]) + " |")
                     md.append("\n---\n")
                 elif desc:
                     md.append(f"- {desc}\n")
@@ -188,7 +187,6 @@ def vision_agent(state: AgentState):
         if not target_pdf:
             target_pdf = pdf_files[0]
 
-    # Safe return agar PDF nahi mili (NoneType error se bachega)
     if not target_pdf:
         return {
             "vision_results": [
@@ -268,7 +266,7 @@ Executive Summary:"""
     try:
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
-            model="gemini-2.0-flash",
+            model="gemini-3.8-flash",
             contents=prompt
         )
         if response.text and response.text.strip():
