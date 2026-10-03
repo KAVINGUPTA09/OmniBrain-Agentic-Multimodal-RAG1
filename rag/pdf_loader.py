@@ -1,5 +1,5 @@
 from pathlib import Path
-import fitz  # PyMuPDF already installed hai
+import fitz
 
 DATA_DIR = Path("data")
 

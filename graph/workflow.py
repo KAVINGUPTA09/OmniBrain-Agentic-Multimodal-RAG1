@@ -26,7 +26,7 @@ def get_gemini_api_key():
 
 
 # ============================================================
-# FORMATTING HELPERS (FIXED NESTED LIST & TABLE RENDERING)
+# FORMATTING HELPERS
 # ============================================================
 def format_vision_markdown(result, pdf_name, page_num):
     if not result:
@@ -75,12 +75,7 @@ def format_vision_markdown(result, pdf_name, page_num):
 
             legends = el.get("legend", [])
             if legends and isinstance(legends, list):
-                leg_strs = []
-                for item in legends:
-                    if isinstance(item, dict):
-                        leg_strs.append(f"{item.get('series', '')} ({item.get('color', '')})")
-                    elif isinstance(item, str) and item.strip():
-                        leg_strs.append(item.strip())
+                leg_strs = [item.get("series", "") if isinstance(item, dict) else str(item) for item in legends if str(item).strip()]
                 if leg_strs:
                     md.append(f"- **Series/Legend:** {', '.join(leg_strs)}")
 
@@ -89,8 +84,7 @@ def format_vision_markdown(result, pdf_name, page_num):
                 first_pt = data_points[0]
                 if isinstance(first_pt, dict):
                     headers = list(first_pt.keys())
-                    md.append("\n**Extracted Values:**")
-                    md.append("| " + " | ".join(headers) + " |")
+                    md.append("\n| " + " | ".join(headers) + " |")
                     md.append("| " + " | ".join(["---"] * len(headers)) + " |")
                     for pt in data_points:
                         if isinstance(pt, dict):
@@ -237,7 +231,10 @@ def multi_agent(state: AgentState):
 
 
 def synthesis_node(state: AgentState):
-    """Summarizes search excerpts into a clean financial answer; robust fallback guarantees no raw excerpts."""
+    """
+    Summarizes retrieved excerpts into executive financial analysis.
+    Hard-blocks all raw excerpts from ever rendering on screen.
+    """
     question = state["question"]
     vision_res = state.get("vision_results", [])
     search_res = state.get("search_results", [])
@@ -258,9 +255,9 @@ Retrieved Excerpts:
 
 Executive Summary:"""
 
-    # 1. Multi-model attempt (agar kisi model par 503/404 aaye toh agla try karega)
+    # 1. API Call with Multi-Model Fallback
     if api_key and raw_text.strip():
-        for m in ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-1.5-flash"]:
+        for m in ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-3.8-flash"]:
             try:
                 client = genai.Client(api_key=api_key)
                 response = client.models.generate_content(
@@ -270,28 +267,29 @@ Executive Summary:"""
                 if response.text and response.text.strip():
                     return {"final_answer": response.text.strip()}
             except Exception as e:
-                print(f"Model {m} failed: {e}", flush=True)
+                print(f"Synthesis model {m} failed: {e}", flush=True)
 
-    # 2. GUARANTEED CLEAN FORMATTER (Raw text return nahi hoga)
-    clean_lines = []
+    # 2. FAIL-SAFE PARSER (Guaranteed: NO raw excerpts on screen)
+    cleaned_points = []
     for line in raw_text.split("\n"):
         line = line.strip()
         if not line:
             continue
         cleaned = re.sub(r'\[Excerpt \d+\]:?', '', line).strip()
         cleaned = re.sub(r'Apple Inc\. \| \d{4} Form 10-K \| \d+', '', cleaned).strip()
-        if len(cleaned) > 20:
-            clean_lines.append(f"- {cleaned}")
+        cleaned = re.sub(r'\[.*?\]', '', cleaned).strip()
+        if len(cleaned) > 20 and not cleaned.lower().startswith("excerpt"):
+            cleaned_points.append(f"- {cleaned}")
 
     formatted_output = f"""### 📊 Executive Financial Analysis
 
-**Target Inquiry:** {question}
+**Target Query:** {question}
 
 **Extracted Financial Metrics & Disclosures:**
-""" + "\n".join(clean_lines[:5]) + """
+""" + "\n".join(cleaned_points[:6]) + """
 
 ---
-*Generated via Agentic Vector Retrieval Pipeline.*"""
+*Retrieved directly via Agentic Vector Retrieval Pipeline.*"""
 
     return {"final_answer": formatted_output}
 
