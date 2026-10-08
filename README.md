@@ -1,107 +1,53 @@
-Markdown# OmniBrain: Agentic Multimodal Financial RAG 🧠📊
-
-OmniBrain is an enterprise-grade, agentic Multimodal Retrieval-Augmented Generation (RAG) system engineered to parse, analyze, and synthesize insights from complex financial filings (such as SEC 10-K and 10-Q reports). 
-
-Powered by **LangGraph**, **Gemini Flash Vision Models**, and **PyMuPDF**, the architecture autonomously routes incoming natural language questions to specialized retrieval and computer-vision pipelines.
-
----
-
-## 🌟 Architecture & Capabilities
-
-              ┌───────────────────────────────┐
-              │    User Financial Query       │
-              └──────────────┬────────────────┘
-                             │
-                             ▼
-              ┌───────────────────────────────┐
-              │     LangGraph Supervisor      │
-              └──────┬─────────────────┬──────┘
-                     │                 │
-        (Text / RAG) │                 │ (Visual / Multimodal)
-                     ▼                 ▼
-      ┌─────────────────────┐   ┌───────────────────────────┐
-      │  Search Agent (RAG) │   │    Vision Agent (Gemini)  │
-      │  - Vector Retrieval │   │    - PyMuPDF Page Render  │
-      │  - Context Ranking  │   │    - Multi-Model Fallback │
-      └──────────┬──────────┘   └─────────────┬─────────────┘
-                 │                            │
-                 └─────────────┬──────────────┘
-                               │
-                               ▼
-      ┌─────────────────────────────────────────────────────┐
-      │    Synthesis Node (Executive Summary & Fallbacks)   │
-      └────────────────────────┬────────────────────────────┘
-                               │
-                               ▼
-              ┌───────────────────────────────┐
-              │   Structured Markdown Output  │
-              └───────────────────────────────┘
-
-- **LangGraph Supervisor Routing:** Intelligently classifies user queries to dispatch either semantic RAG retrieval nodes or visual document inspection engines.
-- **Multimodal Visual Parser:** Extracts high-density tabular disclosures, stock performance comparisons, and financial statements directly from PDF document pages via PyMuPDF rendering and Gemini Vision APIs.
-- **Resilient Multi-Model Fallback Pipeline:** Survives API throttling and temporary server spikes (such as HTTP 503) through a cascade of models (`gemini-2.5-flash`, `gemini-1.5-flash`, `gemini-3.8-flash`) combined with a fail-safe local PyMuPDF extraction engine.
-- **Zero-Noise Financial Synthesis:** Post-processing filtering guarantees that raw excerpt tags, scraping artifacts, and document metadata headers are cleaned before executive summaries are rendered.
-
----
-
-## 🛠️ Tech Stack
-
-- **Orchestration:** LangGraph / LangChain
-- **LLMs & Vision:** Google Gemini API (`gemini-2.5-flash`, `gemini-1.5-flash`)
-- **PDF & Image Processing:** PyMuPDF (`fitz`), Pillow
-- **Frontend & Deployment:** Streamlit, Streamlit Cloud
-
----
-
-## 📂 Repository Structure
-
-```text
-OmniBrain-Agentic-Multimodal-RAG/
-│
-├── agents/
-│   ├── supervisor.py         # Routes query to Search, Vision, or SQL agents
-│   └── search_agent.py       # Vector retrieval and semantic chunk extraction
-│
+OmniBrain: Agentic Multimodal Financial RAG 🧠📊OmniBrain is an agentic Multimodal Retrieval-Augmented Generation (RAG) system engineered to parse, analyze, and synthesize insights from SEC 10-K and financial filings. Orchestrated via LangGraph, it dynamically routes queries between a Semantic Vector RAG Agent, a Gemini Multimodal Vision Agent, and a structured SQL Analytics Engine.🏛️ System ArchitecturePlaintext                           ┌───────────────────────────────┐
+                           │    User Financial Query       │
+                           └──────────────┬────────────────┘
+                                          │
+                                          ▼
+                           ┌───────────────────────────────┐
+                           │     LangGraph Supervisor      │
+                           └──────┬───────┬─────────┬──────┘
+                                  │       │         │
+               ┌──────────────────┘       │         └──────────────────┐
+               ▼                          ▼                            ▼
+  ┌─────────────────────────┐  ┌─────────────────────┐  ┌─────────────────────────────┐
+  │   Search Agent (RAG)    │  │ Vision Agent (VLM)  │  │     SQL Analytics Agent     │
+  │ - In-Memory / Vector DB │  │ - PyMuPDF Page Dumps│  │ - Structured Database Lookup│
+  │ - Semantic Chunk Match  │  │ - Multi-Model Fallback││ - Financial Math Aggregation│
+  └────────────┬────────────┘  └──────────┬──────────┘  └──────────────┬──────────────┘
+               │                          │                            │
+               └──────────────────┐       │       ┌────────────────────┘
+                                  ▼       ▼       ▼
+                           ┌───────────────────────────────┐
+                           │    Executive Synthesis Node   │
+                           │ - Clean Markdown Formatter    │
+                           │ - Metadata Artifact Stripper  │
+                           └──────────────┬────────────────┘
+                                          ▼
+                           ┌───────────────────────────────┐
+                           │   Streamlit Web Interface    │
+                           └───────────────────────────────┘
+⚡ Key CapabilitiesDeterministic Supervisor Routing: Identifies visual cues (table, chart, page), database intents (sql, grouped by, revenue), or standard research questions to route directly to the optimal sub-agent.Multimodal Document Vision: Converts target PDF pages to images via PyMuPDF and utilizes Gemini Vision (gemini-2.5-flash, gemini-1.5-flash) to reconstruct complex financial matrices and indexed comparison graphs.Resilient Cascade Fallbacks: Safeguards API uptime against 503 load spikes with automatic multi-model retry cascades and direct in-memory PyMuPDF extraction fallbacks.Zero-Artifact Output Engine: Post-processing pipeline sanitizes raw ingestion artifacts, scrap tags ([Excerpt X]), and repetitive header rows into clean executive tables.📁 Repository StructurePlaintext├── agents/
+│   ├── supervisor.py         # Deterministic routing logic (SQL vs Vision vs Search)
+│   ├── search_agent.py       # Semantic vector retrieval and context ranking
+│   └── sql_agent.py          # Structured analytical query processing
 ├── graph/
-│   ├── state.py              # TypedDict agent state definitions
-│   └── workflow.py           # LangGraph state machine, nodes, and synthesis logic
-│
+│   ├── state.py              # LangGraph AgentState TypedDict schema
+│   └── workflow.py           # State machine execution graph and synthesis nodes
 ├── vision/
-│   └── image_processor.py    # PyMuPDF rendering, Gemini vision extraction, fallbacks
-│
+│   └── image_processor.py    # PyMuPDF page rendering and Gemini Vision extraction
 ├── rag/
-│   └── pdf_loader.py         # Document ingestion and layout parsing
-│
+│   └── pdf_loader.py         # Financial document ingestion and chunk indexing
 ├── frontend/
-│   └── app.py                # Streamlit UI interface and document indexing triggers
-│
-├── data/                     # Ingested PDF financial filings (e.g., Apple 10-K)
-├── requirements.txt          # Python dependencies
-└── README.md
-🚀 Getting Started1. Clone the RepositoryBashgit clone [https://github.com/KAVINGUPTA09/OmniBrain-Agentic-Multimodal-RAG1.git](https://github.com/KAVINGUPTA09/OmniBrain-Agentic-Multimodal-RAG1.git)
+│   └── app.py                # Streamlit UI dashboard and real-time trace display
+├── data/                     # Ingested PDF filings (e.g., Apple FY24 10-K)
+├── requirements.txt          # Production dependencies
+└── README.md                 # Project documentation
+🚀 Quick Start Guide1. Setup Local EnvironmentBashgit clone https://github.com/KAVINGUPTA09/OmniBrain-Agentic-Multimodal-RAG1.git
 cd OmniBrain-Agentic-Multimodal-RAG1
-2. Set Up Virtual EnvironmentBashpython -m venv venv
-# On Windows:
-.\venv\Scripts\activate
-# On Linux/macOS:
-source venv/bin/activate
-3. Install DependenciesBashpip install --upgrade pip
+python -m venv venv
+.\venv\Scripts\activate   # Linux/macOS: source venv/bin/activate
+pip install --upgrade pip
 pip install -r requirements.txt
-4. Configure API KeysCreate a .env file in the root directory (or configure Secrets in Streamlit Cloud):Code snippetGEMINI_API_KEY=your_gemini_api_key_here
-5. Launch the Streamlit AppBashstreamlit run frontend/app.py
-💡 Example QueriesModeSample QueryVision Extractionvision: Extract the gross margin table and percentages for Products vs Services on page 23 of the Apple 10-K document.Vision Extractionvision: Analyze the tables and financial numbers on page 28 of the Apple 10-K document.Search / RAGFrom the Apple 10-K 2024 filing, what was the total net sales for fiscal year 2024, and what was the percentage breakdown between Products and Services? Provide exact dollar amounts and YoY growth.Search / RAGWhat were Apple's net sales specifically for iPhone, Mac, and Wearables in fiscal year 2024 compared to 2023?🛡️ LicenseDistributed under the MIT License. See LICENSE for more information.
-4. Niche **"Commit changes..."** button par click kar do.
-
----
-
-### Option 2: VS Code Terminal se push karna
-
-Agar VS Code se karna chahte ho:
-1. VS Code mein root folder par `README.md` open karo aur upar wala content paste karke **`Ctrl + S`** daba do.
-2. Terminal mein dono remotes par push kar do:
-
-```powershell
-git add README.md
-git commit -m "docs: update comprehensive agentic multimodal rag readme"
-git push myfork member2-rag
-git push origin member2-rag
+2. Configure Environment KeysCreate a .env file in the root folder:Code snippetGEMINI_API_KEY=your_gemini_api_key_here
+3. Launch ApplicationBashstreamlit run frontend/app.py
+🧪 Verified Benchmark PromptsTarget NodeQuery FormulationVision Agentvision: Extract the gross margin table and percentages for Products vs Services on page 23 of the Apple 10-K document.SQL EngineRun a SQL query to calculate the average quarterly revenue for 2024.Search / RAGFrom the Apple 10-K 2024 filing, what was the total net sales for fiscal year 2024, and what was the percentage breakdown between Products and Services?📜 LicenseDistributed under the MIT License. See LICENSE for details.
