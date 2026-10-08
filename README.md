@@ -1,41 +1,38 @@
 # OmniBrain: Agentic Multimodal Financial RAG 🧠📊
 
-OmniBrain is an agentic Multimodal Retrieval-Augmented Generation (RAG) system engineered to parse, analyze, and synthesize insights from SEC 10-K and financial filings. Orchestrated via **LangGraph**, it dynamically routes queries between a **Semantic Vector RAG Agent**, a **Gemini Multimodal Vision Agent**, and a structured **SQL Analytics Engine**.
+OmniBrain is an agentic Multimodal Retrieval-Augmented Generation (RAG) system built to parse, analyze, and synthesize insights from SEC 10-K and other financial filings. Orchestrated with **LangGraph**, it dynamically routes queries between a **Semantic Vector RAG Agent**, a **Gemini Multimodal Vision Agent**, and a structured **SQL Analytics Engine**.
 
 ---
 
 ## 🏛️ System Architecture
 
+```mermaid
+flowchart TD
+    Q[User Financial Query] --> S[LangGraph Supervisor]
+    S --> A[Search Agent - RAG<br/>Vector DB / In-Memory<br/>Semantic Chunk Match]
+    S --> B[Vision Agent - VLM<br/>PyMuPDF Page Rendering<br/>Multi-Model Fallback]
+    S --> C[SQL Analytics Agent<br/>Structured DB Lookup<br/>Financial Aggregation]
+    A --> E[Executive Synthesis Node<br/>Markdown Formatter<br/>Metadata Artifact Stripper]
+    B --> E
+    C --> E
+    E --> U[Streamlit Web Interface]
+```
+
+---
+
+## ⚡ Key Capabilities
+
+- **Deterministic Supervisor Routing:** Detects visual cues (`table`, `chart`, `page`), database intents (`sql`, `grouped by`, `revenue`), or standard research questions and routes each to the best sub-agent.
+- **Multimodal Document Vision:** Converts target PDF pages to images with PyMuPDF and uses Gemini Vision (`gemini-2.5-flash`, `gemini-1.5-flash`) to reconstruct complex financial tables and comparison charts.
+- **Resilient Cascade Fallbacks:** Handles API 503 load spikes with automatic multi-model retries and a direct in-memory PyMuPDF extraction fallback.
+- **Zero-Artifact Output Engine:** A post-processing pipeline strips raw ingestion artifacts, scrap tags (`[Excerpt X]`), and repeated header rows to produce clean executive tables.
+
+---
+
+## 📁 Repository Structure
+
 ```text
-                           ┌───────────────────────────────┐
-                           │    User Financial Query       │
-                           └──────────────┬────────────────┘
-                                          │
-                                          ▼
-                           ┌───────────────────────────────┐
-                           │     LangGraph Supervisor      │
-                           └──────┬───────┬─────────┬──────┘
-                                  │       │         │
-               ┌──────────────────┘       │         └──────────────────┐
-               ▼                          ▼                            ▼
-  ┌─────────────────────────┐  ┌─────────────────────┐  ┌─────────────────────────────┐
-  │   Search Agent (RAG)    │  │ Vision Agent (VLM)  │  │     SQL Analytics Agent     │
-  │ - In-Memory / Vector DB │  │ - PyMuPDF Page Dumps│  │ - Structured Database Lookup│
-  │ - Semantic Chunk Match  │  │ - Multi-Model Fallback││ - Financial Math Aggregation│
-  └────────────┬────────────┘  └──────────┬──────────┘  └──────────────┬──────────────┘
-               │                          │                            │
-               └──────────────────┐       │       ┌────────────────────┘
-                                  ▼       ▼       ▼
-                           ┌───────────────────────────────┐
-                           │    Executive Synthesis Node   │
-                           │ - Clean Markdown Formatter    │
-                           │ - Metadata Artifact Stripper  │
-                           └──────────────┬────────────────┘
-                                          ▼
-                           ┌───────────────────────────────┐
-                           │   Streamlit Web Interface    │
-                           └───────────────────────────────┘
-⚡ Key CapabilitiesDeterministic Supervisor Routing: Identifies visual cues (table, chart, page), database intents (sql, grouped by, revenue), or standard research questions to route directly to the optimal sub-agent.Multimodal Document Vision: Converts target PDF pages to images via PyMuPDF and utilizes Gemini Vision (gemini-2.5-flash, gemini-1.5-flash) to reconstruct complex financial matrices and indexed comparison graphs.Resilient Cascade Fallbacks: Safeguards API uptime against 503 load spikes with automatic multi-model retry cascades and direct in-memory PyMuPDF extraction fallbacks.Zero-Artifact Output Engine: Post-processing pipeline sanitizes raw ingestion artifacts, scrap tags ([Excerpt X]), and repetitive header rows into clean executive tables.📁 Repository StructurePlaintext├── agents/
+├── agents/
 │   ├── supervisor.py         # Deterministic routing logic (SQL vs Vision vs Search)
 │   ├── search_agent.py       # Semantic vector retrieval and context ranking
 │   └── sql_agent.py          # Structured analytical query processing
@@ -51,12 +48,54 @@ OmniBrain is an agentic Multimodal Retrieval-Augmented Generation (RAG) system e
 ├── data/                     # Ingested PDF filings (e.g., Apple FY24 10-K)
 ├── requirements.txt          # Production dependencies
 └── README.md                 # Project documentation
-🚀 Quick Start Guide1. Setup Local EnvironmentBashgit clone https://github.com/KAVINGUPTA09/OmniBrain-Agentic-Multimodal-RAG1.git
+```
+
+---
+
+## 🚀 Quick Start Guide
+
+### 1. Set Up the Local Environment
+
+```bash
+git clone https://github.com/KAVINGUPTA09/OmniBrain-Agentic-Multimodal-RAG1.git
 cd OmniBrain-Agentic-Multimodal-RAG1
 python -m venv venv
-.\venv\Scripts\activate   # Linux/macOS: source venv/bin/activate
+
+# Windows
+.\venv\Scripts\activate
+# macOS / Linux
+# source venv/bin/activate
+
 pip install --upgrade pip
 pip install -r requirements.txt
-2. Configure Environment KeysCreate a .env file in the root folder:Code snippetGEMINI_API_KEY=your_gemini_api_key_here
-3. Launch ApplicationBashstreamlit run frontend/app.py
-🧪 Benchmark PromptsTarget NodeQuery FormulationVision Agentvision: Extract the gross margin table and percentages for Products vs Services on page 23 of the Apple 10-K document.SQL EngineRun a SQL query to calculate the average quarterly revenue for 2024.Search / RAGFrom the Apple 10-K 2024 filing, what was the total net sales for fiscal year 2024, and what was the percentage breakdown between Products and Services?📜 LicenseDistributed under the MIT License. See LICENSE for details.
+```
+
+### 2. Configure Environment Keys
+
+Create a `.env` file in the root folder:
+
+```env
+GEMINI_API_KEY=your_gemini_api_key_here
+```
+
+### 3. Launch the Application
+
+```bash
+streamlit run frontend/app.py
+```
+
+---
+
+## 🧪 Benchmark Prompts
+
+| Target Node | Query Formulation |
+|---|---|
+| **Vision Agent** | `vision: Extract the gross margin table and percentages for Products vs Services on page 23 of the Apple 10-K document.` |
+| **SQL Engine** | `Run a SQL query to calculate the average quarterly revenue for 2024.` |
+| **Search / RAG** | `From the Apple 10-K 2024 filing, what was the total net sales for fiscal year 2024, and what was the percentage breakdown between Products and Services?` |
+
+---
+
+## 📜 License
+
+Distributed under the MIT License. See `LICENSE` for details.
