@@ -1,4 +1,13 @@
-OmniBrain: Agentic Multimodal Financial RAG 🧠📊OmniBrain is an agentic Multimodal Retrieval-Augmented Generation (RAG) system engineered to parse, analyze, and synthesize insights from SEC 10-K and financial filings. Orchestrated via LangGraph, it dynamically routes queries between a Semantic Vector RAG Agent, a Gemini Multimodal Vision Agent, and a structured SQL Analytics Engine.🏛️ System ArchitecturePlaintext                           ┌───────────────────────────────┐
+# OmniBrain: Agentic Multimodal Financial RAG 🧠📊
+
+OmniBrain is an agentic Multimodal Retrieval-Augmented Generation (RAG) system engineered to parse, analyze, and synthesize insights from SEC 10-K and financial filings. Orchestrated via **LangGraph**, it dynamically routes queries between a **Semantic Vector RAG Agent**, a **Gemini Multimodal Vision Agent**, and a structured **SQL Analytics Engine**.
+
+---
+
+## 🏛️ System Architecture
+
+```text
+                           ┌───────────────────────────────┐
                            │    User Financial Query       │
                            └──────────────┬────────────────┘
                                           │
@@ -50,4 +59,4 @@ pip install --upgrade pip
 pip install -r requirements.txt
 2. Configure Environment KeysCreate a .env file in the root folder:Code snippetGEMINI_API_KEY=your_gemini_api_key_here
 3. Launch ApplicationBashstreamlit run frontend/app.py
-🧪 Verified Benchmark PromptsTarget NodeQuery FormulationVision Agentvision: Extract the gross margin table and percentages for Products vs Services on page 23 of the Apple 10-K document.SQL EngineRun a SQL query to calculate the average quarterly revenue for 2024.Search / RAGFrom the Apple 10-K 2024 filing, what was the total net sales for fiscal year 2024, and what was the percentage breakdown between Products and Services?📜 LicenseDistributed under the MIT License. See LICENSE for details.
+🧪 Benchmark PromptsTarget NodeQuery FormulationVision Agentvision: Extract the gross margin table and percentages for Products vs Services on page 23 of the Apple 10-K document.SQL EngineRun a SQL query to calculate the average quarterly revenue for 2024.Search / RAGFrom the Apple 10-K 2024 filing, what was the total net sales for fiscal year 2024, and what was the percentage breakdown between Products and Services?📜 LicenseDistributed under the MIT License. See LICENSE for details.
